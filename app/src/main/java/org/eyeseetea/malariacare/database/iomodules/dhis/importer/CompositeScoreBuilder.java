@@ -31,6 +31,7 @@ import org.hisp.dhis.android.sdk.persistence.models.DataElement;
 import org.hisp.dhis.android.sdk.persistence.models.Option;
 import org.hisp.dhis.android.sdk.persistence.models.ProgramStageDataElement;
 import org.hisp.dhis.android.sdk.persistence.models.ProgramStageDataElement$Table;
+import org.hisp.dhis.android.sdk.persistence.models.meta.DbOperation;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -47,11 +48,6 @@ public class CompositeScoreBuilder {
     private static final String TAG=".CompositeScoreBuilder";
 
     /**
-     * Default mock answer.output value
-     */
-    public static final Integer DEFAULT_ANSWER_OUTPUT = -1;
-
-    /**
      * Expected value for the attributeValue DeQuesType in those dataElements which are a CompositeScore
      */
     private static final String COMPOSITE_SCORE_NAME ="COMPOSITE_SCORE";
@@ -60,18 +56,6 @@ public class CompositeScoreBuilder {
      * Hierarquical code for any root compositeScore
      */
     public static final String ROOT_NODE_CODE = "0";
-    /**
-     * Value of option 'COMPOSITE_SCORE'
-     */
-    private static String COMPOSITE_SCORE_CODE;
-    /**
-     * Code of attribute '20 Question Type'
-     */
-    private static final String ATTRIBUTE_QUESTION_TYPE_CODE ="DEQuesType";
-    /**
-     * Code of attribute '35 Composite Score'
-     */
-    private static final String ATTRIBUTE_COMPOSITE_SCORE_CODE ="DECompositiveScore";
 
     /**
      * Holds every compositeScore to calculate its order and parent according to its programStage and hierarchicalCode
@@ -87,7 +71,6 @@ public class CompositeScoreBuilder {
         if(optionCompositeScore==null){
             Log.e(TAG,"There is no option named 'COMPOSITE_SCORE' which is a severe data error");
         }
-        COMPOSITE_SCORE_CODE=optionCompositeScore.getCode();
     }
 
     /**
@@ -96,7 +79,7 @@ public class CompositeScoreBuilder {
     public void add(CompositeScore compositeScore){
 
         //Find the right 'tabgroup' to group scores by program
-        String programStageUID=findProgramStageByDataElementUID(compositeScore.getUid());
+        String programStageUID=DataElementExtended.findProgramStageByDataElementUID(compositeScore.getUid());
         if(programStageUID==null){
             Log.e(TAG,String.format("Cannot find tabgroup for composite score: %s",compositeScore.getLabel()));
             return;
@@ -125,52 +108,11 @@ public class CompositeScoreBuilder {
     }
 
     /**
-     * Checks whether a dataElement is a question or a compositescore
-     * @param dataElementExtended
-     * @return
-     */
-    public boolean isACompositeScore(DataElementExtended dataElementExtended){
-
-        String typeQuestion=dataElementExtended.findAttributeValueByCode(ATTRIBUTE_QUESTION_TYPE_CODE);
-
-        if(typeQuestion==null){
-            return false;
-        }
-
-        return typeQuestion.equals(COMPOSITE_SCORE_CODE);
-    }
-
-    /**
-     * Finds the type of question for the given dataElementExtended
-     * @param dataElementExtended
-     * @return
-     */
-    public int findAnswerOutput(DataElementExtended dataElementExtended){
-        String typeQuestion=dataElementExtended.findAttributeValueByCode(ATTRIBUTE_QUESTION_TYPE_CODE);
-
-        //Not found -> error type question
-        if(typeQuestion==null  || typeQuestion.equals(COMPOSITE_SCORE_CODE)){
-            return DEFAULT_ANSWER_OUTPUT;
-        }
-
-        return Integer.valueOf(typeQuestion);
-    }
-
-    public String findHierarchicalCode(DataElementExtended dataElementExtended){
-        //Not a composite -> done
-        if(!isACompositeScore(dataElementExtended)){
-            return null;
-        }
-
-        //Find the value of the attribute 'DECompositiveScore' for this dataElement
-        return dataElementExtended.findAttributeValueByCode(ATTRIBUTE_COMPOSITE_SCORE_CODE);
-    }
-
-    /**
      * Completes the orderBy attribute in compositeScore according to its hierarchical code
      */
-    private void buildOrder(Map<String,CompositeScore> compositeScoreMap){
+    private List<DbOperation> buildOrder(Map<String,CompositeScore> compositeScoreMap){
 
+        List<DbOperation> operations = new ArrayList<>();
         //Order scores by its hierarchical code
         List<CompositeScore> scores = new ArrayList<CompositeScore>(compositeScoreMap.values());
         Collections.sort(scores,new CompositeScoreComparator());
@@ -178,16 +120,17 @@ public class CompositeScoreBuilder {
         int i=0;
         for(CompositeScore score:scores){
             score.setOrder_pos(Integer.valueOf(i));
-            score.save();
+            operations.add(DbOperation.save(score));
             i++;
         }
-
+        return operations;
     }
 
     /**
      * Registers a compositeScore in builder
      */
-    private void buildHierarchy(Map<String,CompositeScore> compositeScoreMap){
+    private List<DbOperation> buildHierarchy(Map<String,CompositeScore> compositeScoreMap){
+        List<DbOperation> operations = new ArrayList<>();
         CompositeScore rootScore=compositeScoreMap.get(ROOT_NODE_CODE);
 
         //Find the parent of each score
@@ -208,27 +151,9 @@ public class CompositeScoreBuilder {
             String parentHierarchicalCode = (numDots==0)?ROOT_NODE_CODE:compositeScoreHierarchicalCode.substring(0,compositeScoreHierarchicalCode.length()-2);
 
             compositeScore.setCompositeScore(compositeScoreMap.get(parentHierarchicalCode));
-            compositeScore.save();
+            operations.add(DbOperation.save(compositeScore));
         }
-
-    }
-
-    /**
-     * Find the associated prgoramStage (tabgroup) given a dataelement UID
-     * @param dataElementUID
-     * @return
-     */
-    private static String findProgramStageByDataElementUID(String dataElementUID){
-        //Find the right 'tabgroup' to group scores by program
-        ProgramStageDataElement programStageDataElement = new Select().from(ProgramStageDataElement.class)
-                .where(Condition.column(ProgramStageDataElement$Table.DATAELEMENT)
-                        .is(dataElementUID)).querySingle();
-
-        if(programStageDataElement==null){
-            return null;
-        }
-
-        return programStageDataElement.getProgramStage();
+        return operations;
     }
 
     /**
@@ -248,7 +173,7 @@ public class CompositeScoreBuilder {
     }
     public static CompositeScore getCompositeScoreFromDataElementAndHierarchicalCode(DataElement dataElement, String HierarchicalCode){
         CompositeScore compositeScore=null;
-        String programId= findProgramStageByDataElementUID(dataElement.getUid());
+        String programId= DataElementExtended.findProgramStageByDataElementUID(dataElement.getUid());
         Map<String,CompositeScore> compositeScoresInProgram=mapCompositeScores.get(programId);
         compositeScore=compositeScoresInProgram.get(HierarchicalCode);
         return compositeScore;

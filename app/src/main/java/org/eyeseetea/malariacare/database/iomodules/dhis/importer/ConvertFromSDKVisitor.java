@@ -33,6 +33,7 @@ import org.eyeseetea.malariacare.database.iomodules.dhis.importer.models.Program
 import org.eyeseetea.malariacare.database.iomodules.dhis.importer.models.UserAccountExtended;
 import org.eyeseetea.malariacare.database.model.Answer;
 import org.eyeseetea.malariacare.database.model.CompositeScore;
+import org.eyeseetea.malariacare.database.model.Header;
 import org.eyeseetea.malariacare.database.model.OrgUnit;
 import org.eyeseetea.malariacare.database.model.Question;
 import org.eyeseetea.malariacare.database.model.Score;
@@ -53,13 +54,17 @@ import org.hisp.dhis.android.sdk.persistence.models.Program;
 import org.hisp.dhis.android.sdk.persistence.models.ProgramStage;
 import org.hisp.dhis.android.sdk.persistence.models.ProgramStageSection;
 import org.hisp.dhis.android.sdk.persistence.models.UserAccount;
+import org.hisp.dhis.android.sdk.persistence.models.meta.DbOperation;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 public class ConvertFromSDKVisitor implements IConvertFromSDKVisitor {
 
     private final static String TAG=".ConvertFromSDKVisitor";
+    List<DbOperation> operations;
     static Map<String,Object> appMapObjects;
 
     /**
@@ -71,8 +76,17 @@ public class ConvertFromSDKVisitor implements IConvertFromSDKVisitor {
 
     public ConvertFromSDKVisitor(){
         appMapObjects = new HashMap();
+        operations = new ArrayList<>();
         compositeScoreBuilder = new CompositeScoreBuilder();
         questionBuilder = new QuestionBuilder();
+    }
+
+    public List<DbOperation> getOperations(){
+        return operations;
+    }
+
+    public void cleanOperations(){
+        operations = new ArrayList<>();
     }
 
     /**
@@ -85,11 +99,10 @@ public class ConvertFromSDKVisitor implements IConvertFromSDKVisitor {
         org.eyeseetea.malariacare.database.model.Program appProgram=new org.eyeseetea.malariacare.database.model.Program();
         appProgram.setUid(program.getUid());
         appProgram.setName(program.getDisplayName());
-        appProgram.save();
-
+        operations.add(DbOperation.save(appProgram));
 
         //Annotate built program
-        appMapObjects.put(program.getUid(), appProgram);
+        appMapObjects.put(appProgram.getUid(), appProgram);
 
         //Visit children
         for(ProgramStage ps:program.getProgramStages()){
@@ -110,7 +123,7 @@ public class ConvertFromSDKVisitor implements IConvertFromSDKVisitor {
         //FIXME TabGroup has no UID right now
         appTabGroup.setName(programStage.getDisplayName());
         appTabGroup.setProgram(appProgram);
-        appTabGroup.save();
+        operations.add(DbOperation.save(appTabGroup));
 
         //Annotate built tabgroup
         appMapObjects.put(programStage.getUid(), appTabGroup);
@@ -134,7 +147,7 @@ public class ConvertFromSDKVisitor implements IConvertFromSDKVisitor {
         if(!appMapObjects.containsKey(String.valueOf(organisationUnit.getLevel()))) {
             //Fixme I need real org_unit_level name
             orgUnitLevel.setName("");
-            orgUnitLevel.save();
+            operations.add(DbOperation.save(orgUnitLevel));
             appMapObjects.put(String.valueOf(organisationUnit.getLevel()), orgUnitLevel);
         }
         //create the orgUnit
@@ -154,7 +167,7 @@ public class ConvertFromSDKVisitor implements IConvertFromSDKVisitor {
         }
         else
             appOrgUnit.setOrgUnit(null);
-        appOrgUnit.save();
+        operations.add(DbOperation.save(appOrgUnit));
         //Annotate built orgunit
         appMapObjects.put(organisationUnit.getId(), appOrgUnit);
     }
@@ -174,7 +187,7 @@ public class ConvertFromSDKVisitor implements IConvertFromSDKVisitor {
         appTab.setType(Constants.TAB_AUTOMATIC);
         appTab.setOrder_pos(programStageSection.getSortOrder());
         appTab.setTabGroup(appTabGroup);
-        appTab.save();
+        operations.add(DbOperation.save(appTab));
 
         //Annotate build tab
         appMapObjects.put(appTab.getClass() + appTab.getName(), appTab);
@@ -193,8 +206,8 @@ public class ConvertFromSDKVisitor implements IConvertFromSDKVisitor {
         Answer appAnswer = new Answer();
         appAnswer.setName(sdkOptionSet.getName());
         //Right type of answer comes from the questions
-        appAnswer.setOutput(CompositeScoreBuilder.DEFAULT_ANSWER_OUTPUT);
-        appAnswer.save();
+        appAnswer.setOutput(DataElementExtended.DEFAULT_ANSWER_OUTPUT);
+        operations.add(DbOperation.save(appAnswer));
 
         //Annotate built tabgroup
         appMapObjects.put(sdkOptionSet.getUid(), appAnswer);
@@ -219,7 +232,8 @@ public class ConvertFromSDKVisitor implements IConvertFromSDKVisitor {
         appOption.setCode(sdkOption.getCode());
         appOption.setAnswer(appAnswer);
         appOption.setFactor(DataValueExtended.extractFactor(sdkOption.getCode()));
-        appOption.save();
+        operations.add(DbOperation.save(appOption));
+
     }
 
     /**
@@ -232,7 +246,7 @@ public class ConvertFromSDKVisitor implements IConvertFromSDKVisitor {
         User appUser = new User();
         appUser.setUid(userAccount.getUId());
         appUser.setName(userAccount.getName());
-        appUser.save();
+        operations.add(DbOperation.save(appUser));
     }
 
 
@@ -243,10 +257,10 @@ public class ConvertFromSDKVisitor implements IConvertFromSDKVisitor {
     @Override
     public void visit(DataElementExtended sdkDataElementExtended) {
         Object questionOrCompositeScore;
-        if(compositeScoreBuilder.isACompositeScore(sdkDataElementExtended)){
+        if(sdkDataElementExtended.isCompositeScore()){
             questionOrCompositeScore=buildCompositeScore(sdkDataElementExtended);
         }else if(sdkDataElementExtended.isQuestion()){
-            questionOrCompositeScore=buildQuestion(sdkDataElementExtended);
+            questionOrCompositeScore = buildQuestion(sdkDataElementExtended);
             //Question type is annotated in 'answer' from an attribute of the question
             buildAnswerOutput(sdkDataElementExtended);
         }else{
@@ -264,8 +278,8 @@ public class ConvertFromSDKVisitor implements IConvertFromSDKVisitor {
     @Override
     public void visit(EventExtended sdkEventExtended) {
         Event event=sdkEventExtended.getEvent();
-        OrgUnit orgUnit =(OrgUnit)appMapObjects.get(event.getOrganisationUnitId());
-        TabGroup tabGroup=(TabGroup)appMapObjects.get(event.getProgramStageId());
+        OrgUnit orgUnit = (OrgUnit) appMapObjects.get(event.getOrganisationUnitId());
+        TabGroup tabGroup= (TabGroup) appMapObjects.get(event.getProgramStageId());
 
         Survey survey=new Survey();
         //Any survey that comes from the pull has been sent
@@ -274,7 +288,7 @@ public class ConvertFromSDKVisitor implements IConvertFromSDKVisitor {
         survey.setEventDate(sdkEventExtended.getEventDate());
         survey.setOrgUnit(orgUnit);
         survey.setTabGroup(tabGroup);
-        survey.save();
+        operations.add(DbOperation.save(survey));
 
         //Annotate object in map
         appMapObjects.put(event.getUid(), survey);
@@ -301,7 +315,7 @@ public class ConvertFromSDKVisitor implements IConvertFromSDKVisitor {
                 score.setScore(Float.parseFloat(dataValue.getValue()));
                 score.setUid(dataValue.getDataElement());
                 score.setSurvey(survey);
-                score.save();
+                operations.add(DbOperation.save(score));
             }
             return;
         }
@@ -322,7 +336,7 @@ public class ConvertFromSDKVisitor implements IConvertFromSDKVisitor {
         //Option -> extract value from code
             value.setValue(sdkDataValueExtended.extractValue());
         }
-        value.save();
+        operations.add(DbOperation.save(value));
     }
 
 
@@ -346,9 +360,11 @@ public class ConvertFromSDKVisitor implements IConvertFromSDKVisitor {
         if (anwserOption != null) {
             appQuestion.setAnswer((Answer) appMapObjects.get(dataElement.getOptionSet()));
         }
-        appQuestion.setHeader(questionBuilder.findHeader(dataElementExtended));
+        Header header = questionBuilder.findHeader(dataElementExtended);
+        operations.add(DbOperation.save(header));
+        appQuestion.setHeader(header);
         questionBuilder.RegisterParentChildRelations(dataElementExtended);
-        appQuestion.save();
+        operations.add(DbOperation.save(appQuestion));
         questionBuilder.add(appQuestion);
         return appQuestion;
     }
@@ -374,17 +390,18 @@ public class ConvertFromSDKVisitor implements IConvertFromSDKVisitor {
         }
 
         //Answer output already set
-        if(!CompositeScoreBuilder.DEFAULT_ANSWER_OUTPUT.equals(answer.getOutput())){
+        if(!dataElementExtended.DEFAULT_ANSWER_OUTPUT.equals(answer.getOutput())){
             return;
         }
 
         //Get type of dataelement
-        answer.setOutput(compositeScoreBuilder.findAnswerOutput(dataElementExtended));
-        answer.save();
+        answer.setOutput(dataElementExtended.findAnswerOutput());
+        operations.add(DbOperation.save(answer));
     }
 
     public void buildRelations(DataElementExtended dataElementExtended) {
-        questionBuilder.addRelations(dataElementExtended);
+        operations.addAll(questionBuilder.addRelations(dataElementExtended));
+
     }
 
     /**
@@ -396,9 +413,9 @@ public class ConvertFromSDKVisitor implements IConvertFromSDKVisitor {
         CompositeScore compositeScore = new CompositeScore();
         compositeScore.setUid(dataElement.getUid());
         compositeScore.setLabel(dataElement.getFormName());
-        compositeScore.setHierarchical_code(compositeScoreBuilder.findHierarchicalCode(sdkDataElementExtended));
+        compositeScore.setHierarchical_code(sdkDataElementExtended.findHierarchicalCode());
         //Parent score and Order can only be set once every score in saved
-        compositeScore.save();
+        operations.add(DbOperation.save(compositeScore));
 
         compositeScoreBuilder.add(compositeScore);
         return compositeScore;

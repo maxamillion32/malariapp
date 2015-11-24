@@ -62,6 +62,8 @@ import org.hisp.dhis.android.sdk.persistence.models.Event;
 import org.hisp.dhis.android.sdk.persistence.models.OptionSet;
 import org.hisp.dhis.android.sdk.persistence.models.OrganisationUnit;
 import org.hisp.dhis.android.sdk.persistence.preferences.ResourceType;
+import org.hisp.dhis.android.sdk.utils.DbUtils;
+
 import java.util.List;
 
 /**
@@ -214,7 +216,8 @@ public class PullController {
         ConvertFromSDKVisitor converter = new ConvertFromSDKVisitor();
         convertMetaData(converter);
         convertDataValues(converter);
-
+        // Apply all changes in batch
+        DbUtils.applyBatch(converter.getOperations());
     }
 
     /**

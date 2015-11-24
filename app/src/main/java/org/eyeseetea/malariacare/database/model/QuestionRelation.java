@@ -34,7 +34,9 @@ import com.raizlabs.android.dbflow.structure.BaseModel;
 import org.eyeseetea.malariacare.database.AppDatabase;
 import org.eyeseetea.malariacare.database.iomodules.dhis.exporter.IConvertToSDKVisitor;
 import org.eyeseetea.malariacare.database.iomodules.dhis.exporter.VisitableToSDK;
+import org.hisp.dhis.android.sdk.persistence.models.meta.DbOperation;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -109,23 +111,28 @@ public class QuestionRelation extends BaseModel implements VisitableToSDK {
         this.operation = operation;
     }
 
-    public void createMatchFromQuestions(List<Question> children){
+    public List<DbOperation> createMatchFromQuestions(List<Question> children){
+        List<DbOperation> operations = new ArrayList<>();
         if (children.size() != 2){
             Log.e(TAG, "createMatchFromQuestions(): children must be 2. Match not created");
-            return;
+            return operations;
         }
         Match match;
+        QuestionOption questionOptionA, questionOptionB;
         for (Option optionA : children.get(0).getAnswer().getOptions()) {
             for (Option optionB : children.get(1).getAnswer().getOptions()) {
                 if(optionA.getFactor().equals(optionB.getFactor())){
                     //Save all optiona factor optionb factor with the same match
                     match = new Match(this);
-                    match.save();
-                    new QuestionOption(optionA, children.get(0), match).save();
-                    new QuestionOption(optionB, children.get(1), match).save();
+                    operations.add(DbOperation.save(match));
+                    questionOptionA = new QuestionOption(optionA, children.get(0), match);
+                    questionOptionB = new QuestionOption(optionB, children.get(1), match);
+                    operations.add(DbOperation.save(questionOptionA));
+                    operations.add(DbOperation.save(questionOptionB));
                 }
             }
         }
+        return operations;
     }
 
     @Override

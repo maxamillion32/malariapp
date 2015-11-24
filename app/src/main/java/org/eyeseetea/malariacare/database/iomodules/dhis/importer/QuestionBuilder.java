@@ -33,6 +33,7 @@ import org.eyeseetea.malariacare.database.model.QuestionRelation;
 import org.eyeseetea.malariacare.database.model.Tab;
 import org.eyeseetea.malariacare.database.utils.PreferencesState;
 import org.hisp.dhis.android.sdk.persistence.models.DataElement;
+import org.hisp.dhis.android.sdk.persistence.models.meta.DbOperation;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -132,7 +133,7 @@ public class QuestionBuilder {
                 header.setOrder_pos(header_order);
                 header_order++;
                 header.setTab(questionTab);
-                header.save();
+                //header.save();
                 mapHeader.put(header.getName(), header);
             } else
                 header = mapHeader.get(value);
@@ -191,24 +192,28 @@ public class QuestionBuilder {
      *
      * @param dataElementExtended
      */
-    public void addRelations(DataElementExtended dataElementExtended) {
+    public List<DbOperation> addRelations(DataElementExtended dataElementExtended) {
+        List<DbOperation> operations = new ArrayList<>();
         if (mapQuestions.containsKey(dataElementExtended.getDataElement().getUid())) {
-            addParent(dataElementExtended.getDataElement());
-            addQuestionRelations(dataElementExtended.getDataElement());
-            addCompositeScores(dataElementExtended);
+            operations.addAll(addParent(dataElementExtended.getDataElement()));
+            operations.addAll(addQuestionRelations(dataElementExtended.getDataElement()));
+            operations.addAll(addCompositeScores(dataElementExtended));
         }
+        return operations;
     }
 
-    private void addCompositeScores(DataElementExtended dataElementExtended) {
+    private List<DbOperation> addCompositeScores(DataElementExtended dataElementExtended) {
+        List<DbOperation> operations = new ArrayList<>();
         CompositeScore compositeScore = dataElementExtended.findCompositeScore();
         if (compositeScore != null) {
             Question appQuestion = mapQuestions.get(dataElementExtended.getDataElement().getUid());
             if (appQuestion != null) {
                 appQuestion.setCompositeScore(compositeScore);
-                appQuestion.save();
+                operations.add(DbOperation.save(appQuestion));
                 add(appQuestion);
             }
         }
+        return operations;
     }
 
 
@@ -217,7 +222,8 @@ public class QuestionBuilder {
      *
      * @param dataElement
      */
-    private void addParent(DataElement dataElement) {
+    private List<DbOperation> addParent(DataElement dataElement) {
+        List<DbOperation> operations = new ArrayList<>();
         String programUid = DataElementExtended.findProgramUIDByDataElementUID(dataElement.getUid());
         String questionRelationType = mapType.get(programUid + dataElement.getUid());
         String questionRelationGroup = mapLevel.get(programUid + dataElement.getUid());
@@ -225,35 +231,33 @@ public class QuestionBuilder {
         Question appQuestion = mapQuestions.get(dataElement.getUid());
 
         if (questionRelationType != null && questionRelationType.equals(DataElementExtended.CHILD)) {
-            try {
-                if (questionRelationType.equals(DataElementExtended.CHILD)) {
-                    String parentuid = mapParent.get(programUid + questionRelationGroup);
-                    if (parentuid != null) {
-                        QuestionRelation questionRelation = new QuestionRelation();
-                        questionRelation.setOperation(1);
-                        questionRelation.setQuestion(appQuestion);
-                        boolean isSaved=false;
-                        Question parentQuestion = mapQuestions.get(parentuid);
-                        List<Option> options = parentQuestion.getAnswer().getOptions();
-                        for (Option option : options) {
-                            if (option.getName().equals(PreferencesState.getInstance().getContext().getResources().getString(R.string.yes))) {
-                                if(!isSaved) {
-                                    //the questionRelation only created if have child with yes option
-                                    questionRelation.save();
-                                    isSaved=true;
-                                }
-                                Match match = new Match();
-                                match.setQuestionRelation(questionRelation);
-                                match.save();
-                                new QuestionOption(option, parentQuestion, match).save();
+            if (questionRelationType.equals(DataElementExtended.CHILD)) {
+                String parentuid = mapParent.get(programUid + questionRelationGroup);
+                if (parentuid != null) {
+                    QuestionRelation questionRelation = new QuestionRelation();
+                    questionRelation.setOperation(QuestionRelation.PARENT_CHILD);
+                    questionRelation.setQuestion(appQuestion);
+                    boolean isSaved=false;
+                    Question parentQuestion = mapQuestions.get(parentuid);
+                    List<Option> options = parentQuestion.getAnswer().getOptions();
+                    for (Option option : options) {
+                        if (option.getName().equals(PreferencesState.getInstance().getContext().getResources().getString(R.string.yes))) {
+                            if(!isSaved) {
+                                //the questionRelation only created if have child with yes option
+                                operations.add(DbOperation.save(questionRelation));
+                                isSaved=true;
                             }
+                            Match match = new Match();
+                            match.setQuestionRelation(questionRelation);
+                            operations.add(DbOperation.save(match));
+                            QuestionOption questionOption = new QuestionOption(option, parentQuestion, match);
+                            operations.add(DbOperation.save(questionOption));
                         }
                     }
                 }
-            } catch (Exception e) {
-                e.printStackTrace();
             }
         }
+        return operations;
     }
 
     /**
@@ -265,8 +269,9 @@ public class QuestionBuilder {
      *
      * @param dataElement
      */
-    private void addQuestionRelations(DataElement dataElement) {
+    private List<DbOperation> addQuestionRelations(DataElement dataElement) {
 
+        List<DbOperation> operations = new ArrayList<>();
         String programUid = DataElementExtended.findProgramUIDByDataElementUID(dataElement.getUid());
         String matchRelationType = mapMatchType.get(programUid + dataElement.getUid());
         String matchRelationGroup = mapMatchLevel.get(programUid + dataElement.getUid());
@@ -282,9 +287,10 @@ public class QuestionBuilder {
                 QuestionRelation questionRelation = new QuestionRelation();
                 questionRelation.setOperation(0);
                 questionRelation.setQuestion(appQuestion);
-                questionRelation.save();
-                questionRelation.createMatchFromQuestions(children);
+                operations.add(DbOperation.save(questionRelation));
+                operations.addAll(questionRelation.createMatchFromQuestions(children));
             }
         }
+        return operations;
     }
 }

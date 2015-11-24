@@ -116,6 +116,10 @@ public class DataElementExtended implements VisitableFromSDK {
      * Code to identify composite scores
      */
     private static String CONTROL_DATAELEMENT_CODE = "";
+    /**
+     * Default mock answer.output value
+     */
+    public static final Integer DEFAULT_ANSWER_OUTPUT = -1;
 
     DataElement dataElement;
 
@@ -319,5 +323,48 @@ public class DataElementExtended implements VisitableFromSDK {
             }
         }
         return compositeScore;
+    }
+
+    public String findHierarchicalCode(){
+        //Not a composite -> done
+        if(!isCompositeScore()){
+            return null;
+        }
+
+        //Find the value of the attribute 'DECompositiveScore' for this dataElement
+        return findAttributeValueByCode(ATTRIBUTE_COMPOSITE_SCORE_CODE);
+    }
+
+    /**
+     * Finds the type of question for the given dataElementExtended
+     * @return
+     */
+    public int findAnswerOutput(){
+        String typeQuestion=findAttributeValueByCode(ATTRIBUTE_QUESTION_TYPE_CODE);
+
+        //Not found -> error type question
+        if(typeQuestion==null  || typeQuestion.equals(COMPOSITE_SCORE_CODE)){
+            return DEFAULT_ANSWER_OUTPUT;
+        }
+
+        return Integer.valueOf(typeQuestion);
+    }
+
+    /**
+     * Find the associated prgoramStage (tabgroup) given a dataelement UID
+     * @param dataElementUID
+     * @return
+     */
+    public static String findProgramStageByDataElementUID(String dataElementUID){
+        //Find the right 'tabgroup' to group scores by program
+        ProgramStageDataElement programStageDataElement = new Select().from(ProgramStageDataElement.class)
+                .where(Condition.column(ProgramStageDataElement$Table.DATAELEMENT)
+                        .is(dataElementUID)).querySingle();
+
+        if(programStageDataElement==null){
+            return null;
+        }
+
+        return programStageDataElement.getProgramStage();
     }
 }
