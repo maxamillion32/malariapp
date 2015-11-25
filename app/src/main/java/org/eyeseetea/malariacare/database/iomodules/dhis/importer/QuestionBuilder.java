@@ -19,8 +19,6 @@
 
 package org.eyeseetea.malariacare.database.iomodules.dhis.importer;
 
-import android.util.Log;
-
 import org.eyeseetea.malariacare.R;
 import org.eyeseetea.malariacare.database.iomodules.dhis.importer.models.DataElementExtended;
 import org.eyeseetea.malariacare.database.model.CompositeScore;
@@ -47,43 +45,33 @@ public class QuestionBuilder {
 
     private static final String TAG = ".QuestionBuilder";
 
-    /**
-     * Mapping all the questions
-     */
-    Map<String, Question> mapQuestions;
+    Map<String, Question> questions;
 
-    /**
-     * Mapping all the question parents
-     */
-    Map<String, String> mapParent;
-    /**
-     * Mapping all the question type(child/parent)
-     */
-    Map<String, String> mapType;
-    /**
-     * Mapping all the question level(it is needed for know who are the parent)
-     */
-    Map<String, String> mapLevel;
+    Map<String, String> questionParents;
+
+    Map<String, String> questionRols;
+
+    Map<String, String> questionLevels;
+
+    Map<Long, Match> matches;
     /**
      * Mapping all the Match question parents
      */
-    Map<String, String> mapMatchType;
+    Map<String, String> matchTypes;
     /**
      * Mapping all the Match question type(child/parent)
      */
-    Map<String, String> mapMatchLevel;
-    /**
-     * Mapping all the Match question level(it is needed for know who are the parent)
-     */
-    Map<String, String> mapMatchParent;
-    /**
-     * Mapping all the Match question level(it is needed for know who are the parent)
-     */
-    Map<String, List<String>> mapMatchChilds;
-    /**
-     * Mapping headers(it is needed for not duplicate data)
-     */
+    Map<String, String> matchLevels;
+
+    Map<String, String> matchParents;
+
+    Map<String, List<String>> matchChildren;
+
     Map<String, Header> mapHeader;
+
+    Map<Long, QuestionRelation> questionRelations;
+
+    Map<Long, QuestionOption> questionOptions;
 
     /**
      * It is needed in the header order.
@@ -91,15 +79,18 @@ public class QuestionBuilder {
     private int header_order = 0;
 
     QuestionBuilder() {
-        mapQuestions = new HashMap<>();
+        questions = new HashMap<>();
         mapHeader = new HashMap<>();
-        mapType = new HashMap<>();
-        mapLevel = new HashMap<>();
-        mapParent = new HashMap<>();
-        mapMatchLevel = new HashMap<>();
-        mapMatchParent = new HashMap<>();
-        mapMatchChilds = new HashMap<>();
-        mapMatchType = new HashMap<>();
+        questionRols = new HashMap<>();
+        questionLevels = new HashMap<>();
+        questionParents = new HashMap<>();
+        matchLevels = new HashMap<>();
+        matchParents = new HashMap<>();
+        matchChildren = new HashMap<>();
+        matchTypes = new HashMap<>();
+        questionRelations = new HashMap<>();
+        matches = new HashMap<>();
+        questionOptions = new HashMap<>();
     }
 
     /**
@@ -108,7 +99,7 @@ public class QuestionBuilder {
      * @param question
      */
     public void add(Question question) {
-        mapQuestions.put(question.getUid(), question);
+        questions.put(question.getUid(), question);
     }
 
     /**
@@ -160,29 +151,28 @@ public class QuestionBuilder {
         if (questionRelationType != null) {
             String parentProgramUid = DataElementExtended.findProgramUIDByDataElementUID(dataElement.getUid());
             if (questionRelationType.equals(DataElementExtended.PARENT)) {
-                mapParent.put(parentProgramUid + questionRelationGroup, dataElement.getUid());
+                questionParents.put(parentProgramUid + questionRelationGroup, dataElement.getUid());
             } else {
-                mapType.put(parentProgramUid + dataElement.getUid(), questionRelationType);
-                mapLevel.put(parentProgramUid + dataElement.getUid(), questionRelationGroup);
+                questionRols.put(parentProgramUid + dataElement.getUid(), questionRelationType);
+                questionLevels.put(parentProgramUid + dataElement.getUid(), questionRelationGroup);
             }
         }
         if (matchRelationType != null) {
             String parentProgramUid = DataElementExtended.findProgramUIDByDataElementUID(dataElement.getUid());
             if (matchRelationType.equals(DataElementExtended.PARENT)) {
-                mapMatchParent.put(parentProgramUid + matchRelationGroup, dataElement.getUid());
+                matchParents.put(parentProgramUid + matchRelationGroup, dataElement.getUid());
             } else if (matchRelationType.equals(DataElementExtended.CHILD)) {
                 List<String> childsUids;
-                if (mapMatchChilds.containsKey(parentProgramUid + matchRelationGroup)) {
-                    childsUids = mapMatchChilds.get(parentProgramUid + matchRelationGroup);
+                if (matchChildren.containsKey(parentProgramUid + matchRelationGroup)) {
+                    childsUids = matchChildren.get(parentProgramUid + matchRelationGroup);
                 } else {
                     childsUids = new ArrayList<>();
                 }
                 childsUids.add(dataElement.getUid());
-                mapMatchChilds.put(parentProgramUid + matchRelationGroup, childsUids);
+                matchChildren.put(parentProgramUid + matchRelationGroup, childsUids);
             }
-            mapMatchType.put(parentProgramUid + dataElement.getUid(), matchRelationType);
-            mapMatchLevel.put(parentProgramUid + dataElement.getUid(), matchRelationGroup);
-
+            matchTypes.put(parentProgramUid + dataElement.getUid(), matchRelationType);
+            matchLevels.put(parentProgramUid + dataElement.getUid(), matchRelationGroup);
         }
 
     }
@@ -194,7 +184,7 @@ public class QuestionBuilder {
      */
     public List<DbOperation> addRelations(DataElementExtended dataElementExtended) {
         List<DbOperation> operations = new ArrayList<>();
-        if (mapQuestions.containsKey(dataElementExtended.getDataElement().getUid())) {
+        if (questions.containsKey(dataElementExtended.getDataElement().getUid())) {
             operations.addAll(addParent(dataElementExtended.getDataElement()));
             operations.addAll(addQuestionRelations(dataElementExtended.getDataElement()));
             operations.addAll(addCompositeScores(dataElementExtended));
@@ -206,10 +196,11 @@ public class QuestionBuilder {
         List<DbOperation> operations = new ArrayList<>();
         CompositeScore compositeScore = dataElementExtended.findCompositeScore();
         if (compositeScore != null) {
-            Question appQuestion = mapQuestions.get(dataElementExtended.getDataElement().getUid());
+            Question appQuestion = questions.get(dataElementExtended.getDataElement().getUid());
             if (appQuestion != null) {
                 appQuestion.setCompositeScore(compositeScore);
                 operations.add(DbOperation.save(appQuestion));
+                questions.put(dataElementExtended.getDataElement().getUid(), appQuestion);
                 add(appQuestion);
             }
         }
@@ -225,33 +216,36 @@ public class QuestionBuilder {
     private List<DbOperation> addParent(DataElement dataElement) {
         List<DbOperation> operations = new ArrayList<>();
         String programUid = DataElementExtended.findProgramUIDByDataElementUID(dataElement.getUid());
-        String questionRelationType = mapType.get(programUid + dataElement.getUid());
-        String questionRelationGroup = mapLevel.get(programUid + dataElement.getUid());
+        String questionRelationType = questionRols.get(programUid + dataElement.getUid());
+        String questionRelationGroup = questionLevels.get(programUid + dataElement.getUid());
 
-        Question appQuestion = mapQuestions.get(dataElement.getUid());
+        Question appQuestion = questions.get(dataElement.getUid());
 
         if (questionRelationType != null && questionRelationType.equals(DataElementExtended.CHILD)) {
             if (questionRelationType.equals(DataElementExtended.CHILD)) {
-                String parentuid = mapParent.get(programUid + questionRelationGroup);
+                String parentuid = questionParents.get(programUid + questionRelationGroup);
                 if (parentuid != null) {
                     QuestionRelation questionRelation = new QuestionRelation();
                     questionRelation.setOperation(QuestionRelation.PARENT_CHILD);
                     questionRelation.setQuestion(appQuestion);
                     boolean isSaved=false;
-                    Question parentQuestion = mapQuestions.get(parentuid);
+                    Question parentQuestion = questions.get(parentuid);
                     List<Option> options = parentQuestion.getAnswer().getOptions();
                     for (Option option : options) {
                         if (option.getName().equals(PreferencesState.getInstance().getContext().getResources().getString(R.string.yes))) {
                             if(!isSaved) {
                                 //the questionRelation only created if have child with yes option
                                 operations.add(DbOperation.save(questionRelation));
+                                questionRelations.put(questionRelation.getId_question_relation(), questionRelation);
                                 isSaved=true;
                             }
                             Match match = new Match();
                             match.setQuestionRelation(questionRelation);
                             operations.add(DbOperation.save(match));
+                            matches.put(match.getId_match(), match);
                             QuestionOption questionOption = new QuestionOption(option, parentQuestion, match);
                             operations.add(DbOperation.save(questionOption));
+                            questionOptions.put(questionOption.getId_question_option(), questionOption);
                         }
                     }
                 }
@@ -263,7 +257,7 @@ public class QuestionBuilder {
     /**
      * Create QuestionOption QuestionRelation and Match relations
      * <p/>
-     * checks if the dataElement is a parent(if is a parent it have mapMatchType and mapMatchLevel)
+     * checks if the dataElement is a parent(if is a parent it have matchTypes and matchLevels)
      * Later get the two childs and create the relation
      * it needs check what Options factors do match, and check it with method getMatchOption() .
      *
@@ -273,21 +267,22 @@ public class QuestionBuilder {
 
         List<DbOperation> operations = new ArrayList<>();
         String programUid = DataElementExtended.findProgramUIDByDataElementUID(dataElement.getUid());
-        String matchRelationType = mapMatchType.get(programUid + dataElement.getUid());
-        String matchRelationGroup = mapMatchLevel.get(programUid + dataElement.getUid());
-        Question appQuestion = mapQuestions.get(dataElement.getUid());
+        String matchRelationType = matchTypes.get(programUid + dataElement.getUid());
+        String matchRelationGroup = matchLevels.get(programUid + dataElement.getUid());
+        Question appQuestion = questions.get(dataElement.getUid());
 
         if (matchRelationType != null && matchRelationType.equals(DataElementExtended.PARENT)) {
-            List<String> mapChilds = mapMatchChilds.get(programUid + matchRelationGroup);
+            List<String> mapChilds = matchChildren.get(programUid + matchRelationGroup);
             List<Question> children = new ArrayList<>();
-            children.add(mapQuestions.get(mapChilds.get(0)));
-            children.add(mapQuestions.get(mapChilds.get(1)));
+            children.add(questions.get(mapChilds.get(0)));
+            children.add(questions.get(mapChilds.get(1)));
 
-            if (mapQuestions.get(mapChilds.get(0)) != null && mapQuestions.get(mapChilds.get(1)) != null) {
+            if (questions.get(mapChilds.get(0)) != null && questions.get(mapChilds.get(1)) != null) {
                 QuestionRelation questionRelation = new QuestionRelation();
                 questionRelation.setOperation(0);
                 questionRelation.setQuestion(appQuestion);
                 operations.add(DbOperation.save(questionRelation));
+                questionRelations.put(questionRelation.getId_question_relation(), questionRelation);
                 operations.addAll(questionRelation.createMatchFromQuestions(children));
             }
         }

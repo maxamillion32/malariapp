@@ -73,7 +73,6 @@ public class ConvertFromSDKVisitor implements IConvertFromSDKVisitor {
     CompositeScoreBuilder compositeScoreBuilder;
     QuestionBuilder questionBuilder;
 
-
     public ConvertFromSDKVisitor(){
         appMapObjects = new HashMap();
         operations = new ArrayList<>();
@@ -96,7 +95,7 @@ public class ConvertFromSDKVisitor implements IConvertFromSDKVisitor {
     public void visit(ProgramExtended sdkProgramExtended){
         //Build program
         Program program=sdkProgramExtended.getProgram();
-        org.eyeseetea.malariacare.database.model.Program appProgram=new org.eyeseetea.malariacare.database.model.Program();
+        org.eyeseetea.malariacare.database.model.Program appProgram = new org.eyeseetea.malariacare.database.model.Program();
         appProgram.setUid(program.getUid());
         appProgram.setName(program.getDisplayName());
         operations.add(DbOperation.save(appProgram));
@@ -316,6 +315,7 @@ public class ConvertFromSDKVisitor implements IConvertFromSDKVisitor {
                 score.setUid(dataValue.getDataElement());
                 score.setSurvey(survey);
                 operations.add(DbOperation.save(score));
+                appMapObjects.put(score.getUid(), score);
             }
             return;
         }
@@ -337,6 +337,8 @@ public class ConvertFromSDKVisitor implements IConvertFromSDKVisitor {
             value.setValue(sdkDataValueExtended.extractValue());
         }
         operations.add(DbOperation.save(value));
+        // FIXME: this will be separed in the future into different maps instead of this ugly system
+        appMapObjects.put(value.getClass().toString() + value.getId_value(), value);
     }
 
 

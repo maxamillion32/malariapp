@@ -212,7 +212,7 @@ public class PullController {
     private void convertFromSDK(){
         Log.d(TAG,"Converting SDK into APP data");
 
-        //One shared converter to match parents within the hierarchy
+        //One shared converter to match questionParents within the hierarchy
         ConvertFromSDKVisitor converter = new ConvertFromSDKVisitor();
         convertMetaData(converter);
         convertDataValues(converter);

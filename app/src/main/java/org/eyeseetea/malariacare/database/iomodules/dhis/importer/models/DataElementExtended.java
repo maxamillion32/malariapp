@@ -209,10 +209,10 @@ public class DataElementExtended implements VisitableFromSDK {
      * @param code
      * @return
      */
-    public  String findAttributeValueByCode(String code){
+    public String findAttributeValueByCode(String code){
 
         //Find the right attribute
-        Attribute attribute= AttributeExtended.findAttributeByCode(code);
+        Attribute attribute= AttributeExtended.findAttributeByCodeInDB(code);
         //No such attribute -> done
         if(attribute==null){
             return null;

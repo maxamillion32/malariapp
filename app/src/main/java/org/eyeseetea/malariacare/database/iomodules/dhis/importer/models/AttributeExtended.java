@@ -47,7 +47,7 @@ public class AttributeExtended {
      * @param code
      * @return
      */
-    public static Attribute findAttributeByCode(String code){
+    public static Attribute findAttributeByCodeInDB(String code){
         return new Select().from(Attribute.class).where(Condition.column(Attribute$Table.CODE).
                 is(code)).querySingle();
     }
