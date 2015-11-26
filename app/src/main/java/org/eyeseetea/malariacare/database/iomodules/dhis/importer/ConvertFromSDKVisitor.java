@@ -44,6 +44,7 @@ import org.eyeseetea.malariacare.database.model.User;
 import org.eyeseetea.malariacare.database.model.Value;
 import org.eyeseetea.malariacare.utils.Constants;
 import org.hisp.dhis.android.sdk.controllers.metadata.MetaDataController;
+import org.hisp.dhis.android.sdk.persistence.models.Constant;
 import org.hisp.dhis.android.sdk.persistence.models.DataElement;
 import org.hisp.dhis.android.sdk.persistence.models.DataValue;
 import org.hisp.dhis.android.sdk.persistence.models.Event;
@@ -146,7 +147,7 @@ public class ConvertFromSDKVisitor implements IConvertFromSDKVisitor {
         OrganisationUnit organisationUnit=sdkOrganisationUnitExtended.getOrgUnit();
         org.eyeseetea.malariacare.database.model.OrgUnitLevel orgUnitLevel = new org.eyeseetea.malariacare.database.model.OrgUnitLevel();
         if(!appMapObjects.containsKey(String.valueOf(organisationUnit.getLevel()))) {
-            //Fixme I need real org_unit_level name
+            //FIXME: We need real org_unit_level name
             orgUnitLevel.setName("");
             operations.add(DbOperation.save(orgUnitLevel));
             appMapObjects.put(String.valueOf(organisationUnit.getLevel()), orgUnitLevel);
@@ -208,10 +209,17 @@ public class ConvertFromSDKVisitor implements IConvertFromSDKVisitor {
         appAnswer.setName(sdkOptionSet.getName());
         //Right type of answer comes from the questions
         appAnswer.setOutput(DataElementExtended.DEFAULT_ANSWER_OUTPUT);
-        operations.add(DbOperation.save(appAnswer));
-
-        //Annotate built tabgroup
-        appMapObjects.put(sdkOptionSet.getUid(), appAnswer);
+        if(sdkOptionSet.getName().equals(Constants.TO_BE_REMOVED)) {
+            if(!appMapObjects.containsKey(appAnswer.getClass() + Constants.TO_BE_REMOVED)){
+                operations.add(DbOperation.save(appAnswer));
+                appMapObjects.put(appAnswer.getClass() + Constants.TO_BE_REMOVED, appAnswer);
+            }
+        }
+        else {
+            operations.add(DbOperation.save(appAnswer));
+            //Annotate built tabgroup
+            appMapObjects.put(sdkOptionSet.getUid(), appAnswer);
+        }
 
         //Visit children
         for(Option option:sdkOptionSet.getOptions()){
@@ -382,12 +390,14 @@ public class ConvertFromSDKVisitor implements IConvertFromSDKVisitor {
         String optionSetUID=dataElement.getOptionSet();
         //No optionset nothing to fulfill
         if(optionSetUID==null){
+            saveNullAnswer(dataElementExtended, Constants.LABEL);
             return;
         }
 
         Answer answer=(Answer)appMapObjects.get(optionSetUID);
         //Answer not found
         if(answer==null){
+            saveNullAnswer(dataElementExtended, Constants.LABEL);
             Log.e(TAG, String.format("Cannot fulfill output of answer with UID: %s",optionSetUID));
             return;
         }
@@ -403,8 +413,31 @@ public class ConvertFromSDKVisitor implements IConvertFromSDKVisitor {
     }
 
     public void buildRelations(DataElementExtended dataElementExtended) {
+        if(dataElementExtended.isQuestion()){
+            buildAnswerOutput(dataElementExtended);
+            //Question type is annotated in 'answer' from an attribute of the question
+        }
         operations.addAll(questionBuilder.addRelations(dataElementExtended));
+    }
 
+    //FIXME we need diferenciate LABEL or Answer to be removed.
+    public void saveNullAnswer(DataElementExtended dataElementExtended,String name) {
+        Answer answer=new Answer();
+        String key=answer.getClass() + name;
+        Question appQuestion=(Question)appMapObjects.get(dataElementExtended.getDataElement().getUid());
+        if(appMapObjects.containsKey(key)) {
+            answer=(Answer)appMapObjects.get(key);
+        }
+        else
+        {
+            answer=new Answer();
+            answer.setOutput(dataElementExtended.findAnswerOutput());
+            answer.setName(name);
+            operations.add(DbOperation.save(answer));
+            appMapObjects.put(key, answer);
+        }
+        appQuestion.setAnswer(answer);
+        operations.add(DbOperation.save(appQuestion));
     }
 
     /**
@@ -416,7 +449,14 @@ public class ConvertFromSDKVisitor implements IConvertFromSDKVisitor {
         CompositeScore compositeScore = new CompositeScore();
         compositeScore.setUid(dataElement.getUid());
         compositeScore.setLabel(dataElement.getFormName());
-        compositeScore.setHierarchical_code(sdkDataElementExtended.findHierarchicalCode());
+        String compositeScoreHierarchicalCode = sdkDataElementExtended.findHierarchicalCode();
+        //FIXME remove it ==null=0, its a problem with a compositeScore without code value.
+        if(compositeScoreHierarchicalCode==null) {
+            compositeScore.setHierarchical_code("0");
+        }
+        else
+        compositeScore.setHierarchical_code(compositeScoreHierarchicalCode);
+
         //Parent score and Order can only be set once every score in saved
         operations.add(DbOperation.save(compositeScore));
 

@@ -19,6 +19,8 @@
 
 package org.eyeseetea.malariacare.database.iomodules.dhis.importer;
 
+import android.util.Log;
+
 import org.eyeseetea.malariacare.R;
 import org.eyeseetea.malariacare.database.iomodules.dhis.importer.models.DataElementExtended;
 import org.eyeseetea.malariacare.database.model.CompositeScore;
@@ -114,20 +116,34 @@ public class QuestionBuilder {
         Header header = null;
         String value = dataElementExtended.getValue(DataElementExtended.ATTRIBUTE_HEADER_NAME);
         if (value != null) {
-            if (!mapHeader.containsKey(value)) {
+            Tab questionTab;
+            String programUid = dataElementExtended.findProgramStageSectionUIDByDataElementUID(dataElementExtended.getDataElement().getUid());
+            String tabUid = dataElementExtended.findProgramStageSectionUIDByDataElementUID(dataElementExtended.getDataElement().getUid());
+            if(ConvertFromSDKVisitor.appMapObjects.containsKey(tabUid)) {
+                questionTab = (Tab) ConvertFromSDKVisitor.appMapObjects.get(tabUid);
+                if(mapHeader.containsKey(programUid+value)){
+                        if(!mapHeader.get(programUid+value).getTab().getName().equals(questionTab.getName()))
+                            Log.d("Bug","Header with other tab"+header.getName()+" othertab "+questionTab.getName()+ "uid" + dataElementExtended.getDataElement().getUid());
+                }
+            }
+            else
+                questionTab=null;
+
+            if (!mapHeader.containsKey(tabUid+value)) {
                 header = new Header();
-                header.setName(value.trim());
+                header.setName(value);
                 header.setShort_name(value);
-                value = dataElementExtended.getValue(DataElementExtended.ATTRIBUTE_TAB_NAME);
-                Tab questionTab = new Tab();
-                questionTab = (Tab) ConvertFromSDKVisitor.appMapObjects.get(questionTab.getClass() + value);
                 header.setOrder_pos(header_order);
                 header_order++;
                 header.setTab(questionTab);
                 //header.save();
-                mapHeader.put(header.getName(), header);
-            } else
-                header = mapHeader.get(value);
+                mapHeader.put(tabUid+header.getName(), header);
+            } else {
+                header = mapHeader.get(tabUid+value);
+            }
+            if(questionTab==null) {
+                header=null;
+            }
         }
         return header;
     }
