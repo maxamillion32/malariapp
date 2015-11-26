@@ -114,7 +114,7 @@ public class CompositeScoreBuilder {
 
         List<DbOperation> operations = new ArrayList<>();
         //Order scores by its hierarchical code
-        List<CompositeScore> scores = new ArrayList<CompositeScore>(compositeScoreMap.values());
+        List<CompositeScore> scores = new ArrayList(compositeScoreMap.values());
         Collections.sort(scores,new CompositeScoreComparator());
 
         int i=0;
@@ -131,7 +131,7 @@ public class CompositeScoreBuilder {
      */
     private List<DbOperation> buildHierarchy(Map<String,CompositeScore> compositeScoreMap){
         List<DbOperation> operations = new ArrayList<>();
-        CompositeScore rootScore=compositeScoreMap.get(ROOT_NODE_CODE);
+        CompositeScore rootScore = compositeScoreMap.get(ROOT_NODE_CODE);
 
         //Find the parent of each score
         for(CompositeScore compositeScore:compositeScoreMap.values()){
@@ -156,6 +156,14 @@ public class CompositeScoreBuilder {
         return operations;
     }
 
+    public static CompositeScore getCompositeScoreFromDataElementAndHierarchicalCode(DataElement dataElement, String HierarchicalCode){
+        CompositeScore compositeScore=null;
+        String programId= DataElementExtended.findProgramStageByDataElementUID(dataElement.getUid());
+        Map<String,CompositeScore> compositeScoresInProgram=mapCompositeScores.get(programId);
+        compositeScore=compositeScoresInProgram.get(HierarchicalCode);
+        return compositeScore;
+    }
+
     /**
      * Comparator that order composite score by its hierarchical code
      */
@@ -170,12 +178,5 @@ public class CompositeScoreBuilder {
         public boolean equals(Object object) {
             return false;
         }
-    }
-    public static CompositeScore getCompositeScoreFromDataElementAndHierarchicalCode(DataElement dataElement, String HierarchicalCode){
-        CompositeScore compositeScore=null;
-        String programId= DataElementExtended.findProgramStageByDataElementUID(dataElement.getUid());
-        Map<String,CompositeScore> compositeScoresInProgram=mapCompositeScores.get(programId);
-        compositeScore=compositeScoresInProgram.get(HierarchicalCode);
-        return compositeScore;
     }
 }

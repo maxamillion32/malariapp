@@ -64,14 +64,15 @@ import java.util.Map;
 public class ConvertFromSDKVisitor implements IConvertFromSDKVisitor {
 
     private final static String TAG=".ConvertFromSDKVisitor";
-    List<DbOperation> operations;
     static Map<String,Object> appMapObjects;
+    static List<DbOperation> operations;
 
     /**
      * Builders that helps while linking compositeScores and questions
      */
     CompositeScoreBuilder compositeScoreBuilder;
     QuestionBuilder questionBuilder;
+
 
     public ConvertFromSDKVisitor(){
         appMapObjects = new HashMap();
@@ -122,6 +123,7 @@ public class ConvertFromSDKVisitor implements IConvertFromSDKVisitor {
         //FIXME TabGroup has no UID right now
         appTabGroup.setName(programStage.getDisplayName());
         appTabGroup.setProgram(appProgram);
+        appTabGroup.setUid(programStage.getUid());
         operations.add(DbOperation.save(appTabGroup));
 
         //Annotate built tabgroup
@@ -315,7 +317,6 @@ public class ConvertFromSDKVisitor implements IConvertFromSDKVisitor {
                 score.setUid(dataValue.getDataElement());
                 score.setSurvey(survey);
                 operations.add(DbOperation.save(score));
-                appMapObjects.put(score.getUid(), score);
             }
             return;
         }
@@ -392,7 +393,7 @@ public class ConvertFromSDKVisitor implements IConvertFromSDKVisitor {
         }
 
         //Answer output already set
-        if(!dataElementExtended.DEFAULT_ANSWER_OUTPUT.equals(answer.getOutput())){
+        if(!DataElementExtended.DEFAULT_ANSWER_OUTPUT.equals(answer.getOutput())){
             return;
         }
 

@@ -43,7 +43,8 @@ import java.util.List;
  * Created by Jose on 25/05/2015.
  */
 @Table(databaseName = AppDatabase.NAME)
-public class QuestionRelation extends BaseModel implements VisitableToSDK {
+
+public class QuestionRelation extends BaseModel {
 
     private static final String TAG = ".QuestionRelation";
     /**
@@ -133,11 +134,6 @@ public class QuestionRelation extends BaseModel implements VisitableToSDK {
             }
         }
         return operations;
-    }
-
-    @Override
-    public void accept(IConvertToSDKVisitor IConvertToSDKVisitor) {
-        IConvertToSDKVisitor.visit(this);
     }
 
     @Override
