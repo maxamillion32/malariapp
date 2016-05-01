@@ -439,6 +439,7 @@ public class ConvertFromSDKVisitor implements IConvertFromSDKVisitor {
         appQuestion.setHeader(questionBuilder.saveHeader(dataElementExtended,tabGroupBuilder));
         questionBuilder.registerParentChildRelations(dataElementExtended);
         appQuestion.save();
+        questionBuilder.attachMedia(dataElementExtended, appQuestion);
         questionBuilder.add(appQuestion);
         return appQuestion;
     }
