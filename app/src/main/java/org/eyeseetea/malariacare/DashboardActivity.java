@@ -33,6 +33,7 @@ import android.view.View;
 
 import com.squareup.otto.Subscribe;
 
+import org.eyeseetea.malariacare.database.model.Media;
 import org.eyeseetea.malariacare.database.model.OrgUnit;
 import org.eyeseetea.malariacare.database.model.Survey;
 import org.eyeseetea.malariacare.database.model.TabGroup;
@@ -43,6 +44,7 @@ import org.eyeseetea.malariacare.database.utils.SurveyAnsweredRatio;
 import org.eyeseetea.malariacare.database.utils.planning.SurveyPlanner;
 import org.eyeseetea.malariacare.layout.dashboard.builder.AppSettingsBuilder;
 import org.eyeseetea.malariacare.layout.dashboard.controllers.DashboardController;
+import org.eyeseetea.malariacare.media.DriveUtils;
 import org.eyeseetea.malariacare.network.PullClient;
 import org.eyeseetea.malariacare.receivers.AlarmPushReceiver;
 import org.eyeseetea.malariacare.services.SurveyService;
@@ -54,7 +56,7 @@ import java.util.Date;
 import java.util.List;
 
 
-public class DashboardActivity extends BaseActivity{
+public class DashboardActivity extends BaseActivity {
 
     private final static String TAG=".DDetailsActivity";
     private boolean reloadOnResume=true;
@@ -82,6 +84,11 @@ public class DashboardActivity extends BaseActivity{
         dashboardController.onCreate(this,savedInstanceState);
 
         setAlarm();
+
+        for(Media media: Media.getAllMedia()) {
+            Log.d(TAG, "pinning file: " + media.getResourceUrl());
+            DriveUtils.getInstance(this, media.getResourceUrl());
+        }
     }
 
     @Override
