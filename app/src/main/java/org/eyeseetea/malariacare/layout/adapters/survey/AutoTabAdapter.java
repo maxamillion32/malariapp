@@ -81,8 +81,8 @@ public class AutoTabAdapter extends ATabAdapter {
             if (item instanceof Question) {
                 boolean hidden = AutoTabLayoutUtils.isHidden((Question) item, idSurvey);
                 elementInvisibility.put(item, hidden);
-                if (!(hidden)) AutoTabLayoutUtils.initScoreQuestion((Question) item, totalNum, totalDenum, idSurvey, module);
-                else ScoreRegister.addRecord((Question) item, 0F, ScoreRegister.calcDenum((Question) item,idSurvey),idSurvey, module);
+                //if (!(hidden)) AutoTabLayoutUtils.initScoreQuestion((Question) item, totalNum, totalDenum, idSurvey, module);
+                //else ScoreRegister.addRecord((Question) item, 0F, ScoreRegister.calcDenum((Question) item,idSurvey),idSurvey, module);
                 Header header = ((Question) item).getHeader();
                 boolean headerVisibility = elementInvisibility.get(header);
                 elementInvisibility.put(header, headerVisibility && elementInvisibility.get(item));

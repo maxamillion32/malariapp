@@ -34,6 +34,7 @@ import org.eyeseetea.malariacare.database.model.OrgUnitLevel;
 import org.eyeseetea.malariacare.database.model.Program;
 import org.eyeseetea.malariacare.database.model.Survey;
 import org.eyeseetea.malariacare.database.model.Tab;
+import org.eyeseetea.malariacare.database.utils.PreferencesState;
 import org.eyeseetea.malariacare.database.utils.Session;
 import org.eyeseetea.malariacare.database.utils.feedback.Feedback;
 import org.eyeseetea.malariacare.database.utils.feedback.FeedbackBuilder;
@@ -439,8 +440,8 @@ public class SurveyService extends IntentService {
         Log.d(TAG, "prepareSurveyInfo (Thread:" + Thread.currentThread().getId() + ")");
 
         //register composite scores for current survey and module
-        List<CompositeScore> compositeScores = CompositeScore.list();
-        ScoreRegister.registerCompositeScores(compositeScores,Session.getSurveyByModule(module).getId_survey(),module);
+        List<CompositeScore> compositeScores = PreferencesState.getInstance().getCompositeScores();;
+        //ScoreRegister.registerCompositeScores(compositeScores,Session.getSurveyByModule(module).getId_survey(),module);
 
         //Get tabs for current program & register them (scores)
         List<Tab> tabs = Tab.getTabsBySession(module);

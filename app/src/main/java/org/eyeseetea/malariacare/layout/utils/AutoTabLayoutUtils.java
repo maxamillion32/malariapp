@@ -367,20 +367,22 @@ public class AutoTabLayoutUtils {
      * @param question question that change its values
      */
     private static void recalculateScores(AutoTabLayoutUtils.ViewHolder viewHolder, Question question, float idSurvey, String module) {
+        if (!PreferencesState.getInstance().isShowNumDen())
+            return;
         Float num = ScoreRegister.calcNum(question, idSurvey);
         Float denum = ScoreRegister.calcDenum(question, idSurvey);
 
-        ScoreRegister.addRecord(question, num, denum, idSurvey, module);
+        //ScoreRegister.addRecord(question, num, denum, idSurvey, module);
         //if the num is null, the question haven't a valid numerator, and the denominator should be ignored
         viewHolder.num.setText(PreferencesState.getInstance().getContext().getString(R.string.number_zero));
         viewHolder.denum.setText(PreferencesState.getInstance().getContext().getString(R.string.number_zero));
         if(num!=null){
             viewHolder.num.setText(num.toString());
             viewHolder.denum.setText(denum.toString());
-            ScoreRegister.addRecord(question, num, denum, idSurvey, module);
+            //ScoreRegister.addRecord(question, num, denum, idSurvey, module);
         }
-        else
-            ScoreRegister.deleteRecord(question, idSurvey, module);
+        //else
+        //ScoreRegister.deleteRecord(question, idSurvey, module);
     }
 
     /**
@@ -410,7 +412,7 @@ public class AutoTabLayoutUtils {
                     elementInvisibility.put(childHeader, AutoTabLayoutUtils.hideHeader(childHeader, elementInvisibility));
             } else {
                 Float denum = ScoreRegister.calcDenum(child, idSurvey);
-                ScoreRegister.addRecord(child, 0F, denum, idSurvey, module);
+                //ScoreRegister.addRecord(child, 0F, denum, idSurvey, module);
                 elementInvisibility.put(childHeader, false);
             }
             cachedQuestion = question;
@@ -425,8 +427,8 @@ public class AutoTabLayoutUtils {
 
             Float num = ScoreRegister.calcNum(question, idSurvey);
             Float denum = ScoreRegister.calcDenum(question, idSurvey);
-            if(num!=null)
-                ScoreRegister.addRecord(question, num, denum, idSurvey, module);
+            //if(num!=null)
+            // ScoreRegister.addRecord(question, num, denum, idSurvey, module);
         }
     }
 }

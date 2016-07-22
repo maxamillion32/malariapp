@@ -21,16 +21,20 @@ package org.eyeseetea.malariacare.database.utils;
 
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.os.AsyncTask;
 import android.preference.PreferenceManager;
 import android.util.DisplayMetrics;
 import android.util.Log;
+import android.view.View;
 
 import org.eyeseetea.malariacare.DashboardActivity;
 import org.eyeseetea.malariacare.ProgressActivity;
 import org.eyeseetea.malariacare.R;
+import org.eyeseetea.malariacare.database.model.CompositeScore;
 import org.eyeseetea.malariacare.utils.Constants;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -38,6 +42,36 @@ import java.util.Map;
  * Created by arrizabalaga on 26/06/15.
  */
 public class PreferencesState {
+
+    private static List<CompositeScore> compositeScoresList;
+    public static List<CompositeScore> getCompositeScores(){
+        if(compositeScoresList==null)
+            compositeScoresList=CompositeScore.list();
+        return compositeScoresList;
+    }
+    public static void setCompositeScores(List<CompositeScore> compositeScores){
+        compositeScoresList=compositeScores;
+    }
+
+    public void loadCompositeScores() {
+        AsyncLoadCompositeScores as=new AsyncLoadCompositeScores();
+        as.execute();
+    }
+
+    public class AsyncLoadCompositeScores extends AsyncTask<Void, Void, Void> {
+
+        @Override
+        protected void onPreExecute() {
+            super.onPreExecute();
+        }
+
+        @Override
+        protected Void doInBackground(Void... params) {
+            Log.d(TAG, "doInBackground("+Thread.currentThread().getId()+")..");
+            PreferencesState.getInstance().setCompositeScores(CompositeScore.list());
+            return null;
+        }
+    }
 
     private static String TAG=".PreferencesState";
 

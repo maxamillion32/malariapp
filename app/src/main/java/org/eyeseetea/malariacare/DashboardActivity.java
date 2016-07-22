@@ -94,6 +94,7 @@ public class DashboardActivity extends BaseActivity implements DashboardUnsentFr
     protected void onCreate(Bundle savedInstanceState) {
         Log.d(TAG, "onCreate");
         super.onCreate(savedInstanceState);
+        PreferencesState.getInstance().loadCompositeScores();
         handler = new Handler(Looper.getMainLooper());
         dashboardActivity=this;
         setContentView(R.layout.tab_dashboard);

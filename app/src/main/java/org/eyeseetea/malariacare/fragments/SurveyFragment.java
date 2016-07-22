@@ -380,7 +380,7 @@ public class SurveyFragment extends  Fragment {
         if(selectedTab.isCompositeScore()){
             //Initialize scores x question not loaded yet
             List<Tab> notLoadedTabs=tabAdaptersCache.getNotLoadedTabs();
-            ScoreRegister.initScoresForQuestions(Question.listAllByTabs(notLoadedTabs), Session.getSurveyByModule(module), module);
+            //ScoreRegister.initScoresForQuestions(Question.listAllByTabs(notLoadedTabs), Session.getSurveyByModule(module), module);
         }
         ITabAdapter tabAdapter=tabAdaptersCache.findAdapter(selectedTab);
 
