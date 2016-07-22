@@ -19,8 +19,6 @@
 
 package org.eyeseetea.malariacare.database.model;
 
-import android.util.Log;
-
 import com.raizlabs.android.dbflow.annotation.Column;
 import com.raizlabs.android.dbflow.annotation.OneToMany;
 import com.raizlabs.android.dbflow.annotation.PrimaryKey;
@@ -385,37 +383,20 @@ public class Question extends BaseModel {
 
     public List<Question> getChildren() {
         if (this.children == null) {
-
-            //No matches no children
-            if (getId_question() == 74){
-                Log.d("Question", "testing");
+            List<QuestionOption> questionOptions = new Select().from(QuestionOption.class).where(Condition.column(QuestionOption$Table.ID_QUESTION).eq(id_question)).queryList();
+            List<QuestionRelation> questionRelations = new Select().from(QuestionRelation.class).queryList();
+            children = new ArrayList<>();
+            List<Question> questions = new ArrayList<>();
+            List<Match> matchList = new ArrayList<>();
+            for (QuestionOption questionOption : questionOptions) {
+                matchList.add(questionOption.getMatch());
             }
-            List<Match> matches = getMatches();
-            if (matches.size() == 0) {
-                this.children = new ArrayList<>();
-                return this.children;
+            for (Match match : matchList) {
+                for (QuestionRelation questionRelation : questionRelations)
+                    if (match.getQuestionRelation().getId_question_relation() == questionRelation.getId_question_relation() && questionRelation.getOperation() == QuestionRelation.PARENT_CHILD)
+                        questions.add(questionRelation.getQuestion());
             }
-
-            Iterator<Match> matchesIterator = matches.iterator();
-            In in = Condition.column(ColumnAlias.columnWithTable("m", Match$Table.ID_MATCH)).in(Long.toString(matchesIterator.next().getId_match()));
-            while (matchesIterator.hasNext()){
-                in.and(Long.toString(matchesIterator.next().getId_match()));
-            }
-
-            //Select question from questionrelation where operator=1 and id_match in (..)
-            return new Select().from(Question.class).as("q")
-                    //Question + QuestioRelation
-                    .join(QuestionRelation.class, Join.JoinType.LEFT).as("qr")
-                    .on(Condition.column(ColumnAlias.columnWithTable("q", Question$Table.ID_QUESTION))
-                            .eq(ColumnAlias.columnWithTable("qr", QuestionRelation$Table.ID_QUESTION)))
-                            //+Match
-                    .join(Match.class, Join.JoinType.LEFT).as("m")
-                    .on(Condition.column(ColumnAlias.columnWithTable("qr", QuestionRelation$Table.ID_QUESTION_RELATION))
-                                    .eq(ColumnAlias.columnWithTable("m", Match$Table.ID_QUESTION_RELATION)))
-                            //Parent child relationship
-                    .where(in)
-                            //In clause
-                    .and(Condition.column(ColumnAlias.columnWithTable("qr", QuestionRelation$Table.OPERATION)).eq(QuestionRelation.PARENT_CHILD)).queryList();
+            this.children = questions;
         }
         return this.children;
     }
