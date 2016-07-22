@@ -331,7 +331,7 @@ public class SurveyFragment extends  Fragment {
                 content.removeAllViews();
                 content.addView(viewContent);
                 ITabAdapter tabAdapter = tabAdaptersCache.findAdapter(tab);
-                if (tab.getType() == Constants.TAB_AUTOMATIC ||
+                if (
                         tab.getType() == Constants.TAB_ADHERENCE ||
                         tab.getType() == Constants.TAB_IQATAB ||
                         tab.getType() == Constants.TAB_REPORTING ||
